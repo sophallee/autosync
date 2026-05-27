@@ -132,7 +132,7 @@ fi
 # Load global properties initially to set logging defaults
 # shellcheck source=/dev/null
 source "$global_properties"
-g_log_level="${log_level:-information}"
+g_log_level="${log_level:-error}"
 g_log_max_size_kb="${log_max_size_kb:-1024}"
 g_log_backups="${log_backups:-5}"
 
@@ -225,7 +225,7 @@ while true; do
     # Reload global properties to pick up runtime changes
     # shellcheck source=/dev/null
     source "$global_properties"
-    g_log_level="${log_level:-information}"
+    g_log_level="${log_level:-error}"
     g_log_max_size_kb="${log_max_size_kb:-1024}"
     g_log_backups="${log_backups:-5}"
 

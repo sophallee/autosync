@@ -36,7 +36,7 @@ The script handles its own logging and log rotation, so you don't need to redire
 
 ### 1. Global Properties (`global.properties`)
 Set global defaults for connections and logging:
-- `log_level`: Set to `information` (default) or `error` for more concise logs.
+- `log_level`: Set to `error` (default) or `information` for more detailed logs.
 - `log_max_size_kb`: Max size of the log file before rotation.
 - `log_backups`: Number of rotated backups to keep.
 

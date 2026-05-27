@@ -7,8 +7,8 @@ check_interval=60
 max_folders=20
 
 # --- Logging & Notifications ---
-# Log level: information (default) or error
-log_level='information'
+# Log level: error (default) or information
+log_level='error'
 
 # Max log file size in KB before rotation (default: 1024KB / 1MB)
 log_max_size_kb=1024
