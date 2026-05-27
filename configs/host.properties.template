@@ -1,0 +1,28 @@
+# --- Host-Specific Configuration ---
+
+# Description: A brief description of this host/server
+description="Example Server"
+
+# --- Host Connection Overrides ---
+# These override the global defaults for THIS host only.
+# ssh_key='~/.ssh/id_rsa'
+# remote_ip='10.0.0.1'
+# remote_port='22'
+# remote_user='appuser'
+# remote_path='/opt/app'
+
+# --- Host-Specific Aliases ---
+# host_alias_name="user@ip:port:key"
+
+# --- Folder Sync Definitions ---
+# Format: "direction,host_alias,local_path,remote_path,exclude_file"
+# - direction:  push (local to remote) or pull (remote to local)
+# - host_alias: Name of a host_ alias, a direct "user@ip:port:key" string, 
+#               or leave empty to use the host connection overrides above.
+# - local_path: Local directory path.
+# - remote_path: Remote directory path (defaults to host remote_path if empty).
+# - exclude_file: Optional path to an exclude file (checks configs/ first).
+
+# Example sync jobs:
+#synced_folder1="pull,,/home/user/app,,app.excludes"
+#synced_folder2="push,,/home/user/data,/backup/data,"

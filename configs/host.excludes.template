@@ -1,0 +1,22 @@
+# Global rsync exclude patterns applied to all synced folders.
+# Patterns match at any directory depth — no leading slash needed.
+# Syntax follows rsync filter rules: https://man7.org/linux/man-pages/man1/rsync.1.html#FILTER_RULES
+
+# Git
+.git**
+.gitignore
+
+# Environment / secrets
+.env
+
+# Terraform
+.terraform/**
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+tfplan
+
+# Ansible
+*default_inventory.yml
+*group_vars*

@@ -1,0 +1,27 @@
+# --- Global Configuration Settings ---
+
+# How often (in seconds) to check and sync (Global)
+check_interval=60
+
+# Maximum number of synced_folder entries to scan per host file
+max_folders=20
+
+# --- Logging & Notifications ---
+# Path to write rsync errors (leave empty for <script_dir>/logs/autosync.err)
+error_log=''
+
+# Email address for error notifications (leave empty to disable)
+email_on_error=''
+
+# --- Global Excludes ---
+# Applied to EVERY synced folder.
+# Default: <script_dir>/autosync.excludes
+global_exclude_file=''
+
+# --- Default Connection Settings (Global fallback) ---
+# These are used if a sync job doesn't specify a host alias or direct connection.
+ssh_key='~/.ssh/keys/autosync_ecdsa'
+remote_ip=''
+remote_port='22'
+remote_user=''
+remote_path=''
