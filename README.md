@@ -24,17 +24,23 @@ A daemon script that continuously pulls or pushes files between a remote server 
 
 ## Running as a Daemon (Crontab)
 
-To ensure the script starts automatically on reboot and runs in the background, add it to your crontab:
+The script handles its own logging and log rotation, so you don't need to redirect output in your crontab. To ensure the script starts automatically on reboot, add it to your crontab:
 
 1. Open crontab: `crontab -e`
 2. Add the following line (replace with your actual path):
    ```bash
-   @reboot /path/to/autosync/autosync.sh >> /path/to/autosync/logs/autosync.log 2>&1
+   @reboot /path/to/autosync/autosync.sh
    ```
 
 ## Modular Config Structure
 
-### 1. Host Properties (`configs/*.properties`)
+### 1. Global Properties (`global.properties`)
+Set global defaults for connections and logging:
+- `log_level`: Set to `information` (default) or `error` for more concise logs.
+- `log_max_size_kb`: Max size of the log file before rotation.
+- `log_backups`: Number of rotated backups to keep.
+
+### 2. Host Properties (`configs/*.properties`)
 Define host-specific settings or sync jobs. Every `.properties` file in `configs/` is loaded.
 ```bash
 description="Production Web Server"

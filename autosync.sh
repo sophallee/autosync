@@ -10,6 +10,7 @@ global_excludes="$script_dir/autosync.excludes"
 configs_dir="$script_dir/configs"
 logs_dir="$script_dir/logs"
 pid_file="$logs_dir/autosync.pid"
+log_file="$logs_dir/autosync.log"
 
 # Ensure essential directories exist
 mkdir -p "$logs_dir"
@@ -27,6 +28,63 @@ echo $$ > "$pid_file"
 
 # Clean up PID file on exit
 trap 'rm -f "$pid_file"; exit' INT TERM EXIT
+
+# --- Helper Functions ---
+
+# Log a message with a specific level (information or error)
+log_msg() {
+    local level="${1:-information}"
+    local msg="$2"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Check if we should log this level
+    if [[ "$level" == "information" && "$g_log_level" == "error" ]]; then
+        return
+    fi
+
+    local formatted_msg="[$timestamp] [${level^^}] $msg"
+    
+    # Print to stdout for manual runs
+    echo "$formatted_msg"
+    
+    # Write to log file
+    echo "$formatted_msg" >> "$log_file"
+    
+    # Periodic rotation check (every time we log)
+    rotate_logs
+}
+
+rotate_logs() {
+    local max_size=$((g_log_max_size_kb * 1024))
+    local backups=$g_log_backups
+    
+    if [[ -f "$log_file" ]]; then
+        local current_size=$(stat -c%s "$log_file")
+        if [[ $current_size -ge $max_size ]]; then
+            # Rotate backups
+            for ((i=backups-1; i>=1; i--)); do
+                if [[ -f "$log_file.$i" ]]; then
+                    mv "$log_file.$i" "$log_file.$((i+1))"
+                fi
+            done
+            mv "$log_file" "$log_file.1"
+            touch "$log_file"
+        fi
+    fi
+}
+
+log_error() {
+    local msg="$1"
+    local host="${2:-system}"
+    log_msg "error" "[$host] $msg"
+    
+    # Also write to separate error log for backward compatibility if configured
+    if [[ -n "$error_log" ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [$host] ERROR: $msg" >> "$error_log"
+    elif [[ -d "$logs_dir" ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [$host] ERROR: $msg" >> "$logs_dir/autosync.err"
+    fi
+}
 
 # --- Dependency Checks ---
 
@@ -71,17 +129,14 @@ if [[ $missing_global -eq 1 ]]; then
     exit 1
 fi
 
-# Load global properties
+# Load global properties initially to set logging defaults
 # shellcheck source=/dev/null
 source "$global_properties"
+g_log_level="${log_level:-information}"
+g_log_max_size_kb="${log_max_size_kb:-1024}"
+g_log_backups="${log_backups:-5}"
 
-# --- Helper Functions ---
-
-log_error() {
-    local msg="$1"
-    local host="${2:-system}"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [$host] ERROR: $msg" >> "$logs_dir/autosync.err"
-}
+# --- Connection Helper Functions ---
 
 # Checks if rsync is available on a remote host
 # Returns: 0 = found, 1 = not found, 2 = SSH error
@@ -158,7 +213,7 @@ resolve_host() {
 
 # --- Main Logic ---
 
-echo "Starting autosync daemon..."
+log_msg "information" "Starting autosync daemon..."
 
 # Keep track of verified hosts to avoid redundant SSH checks
 verified_hosts_cache=""
@@ -170,6 +225,9 @@ while true; do
     # Reload global properties to pick up runtime changes
     # shellcheck source=/dev/null
     source "$global_properties"
+    g_log_level="${log_level:-information}"
+    g_log_max_size_kb="${log_max_size_kb:-1024}"
+    g_log_backups="${log_backups:-5}"
 
     # Set global defaults if not defined
     check_interval="${check_interval:-60}"
@@ -186,8 +244,7 @@ while true; do
     shopt -u nullglob
 
     if [[ ${#host_files[@]} -eq 0 && -z "$g_remote_ip" ]]; then
-        echo "Advice: No host configuration files found in '$configs_dir' and no global 'remote_ip' is defined."
-        echo "  Please define connection details in '$global_properties' or create a host config in '$configs_dir'."
+        log_msg "information" "Advice: No host configuration files found in '$configs_dir' and no global 'remote_ip' is defined."
         sleep 30
         continue
     fi
@@ -217,12 +274,11 @@ while true; do
             host_default_exclude="$configs_dir/${host_filename}.exclude"
         fi
 
-        echo "--- Processing Host: $host_label ---"
+        log_msg "information" "--- Processing Host: $host_label ---"
 
         # Check if we have enough info to connect
         if [[ -z "$remote_ip" ]]; then
-            echo "  Advice: SSH details (remote_ip) are missing for this host and no global default exists."
-            echo "  Please fill in 'remote_ip' in '$host_file' or '$global_properties'."
+            log_msg "information" "  Advice: SSH details (remote_ip) are missing for this host and no global default exists."
             continue
         fi
 
@@ -257,27 +313,25 @@ while true; do
             key="${host_info[3]}"
 
             if [[ -z "$ip" ]]; then
-                echo "  [Job $i] Skip: No target IP or Hostname defined for this job."
+                log_msg "information" "  [Job $i] Skip: No target IP or Hostname defined for this job."
                 continue
             fi
 
             # --- Remote Pre-Check (Once per host per iteration) ---
             host_identifier="${user}@${ip}:${port}"
             if [[ "$verified_hosts_cache" != *" $host_identifier "* ]]; then
-                echo "  [Job $i] Verifying remote rsync on $ip..."
+                log_msg "information" "  [Job $i] Verifying remote rsync on $ip..."
                 check_remote_rsync "$user" "$ip" "$port" "$key"
                 check_status=$?
                 
                 if [[ $check_status -eq 0 ]]; then
                     verified_hosts_cache+="$host_identifier "
                 elif [[ $check_status -eq 1 ]]; then
-                    echo "  [Job $i] Error: 'rsync' is NOT installed on the remote host ($ip)."
+                    log_msg "error" "  [Job $i] Error: 'rsync' is NOT installed on the remote host ($ip)."
                     log_error "rsync missing on remote host $ip" "$host_filename"
                     continue
                 else
-                    echo "  [Job $i] Warning: Could not verify remote rsync (SSH connection failed)."
-                    # We continue anyway in case it's a transient SSH issue, 
-                    # but the rsync call itself will likely fail too.
+                    log_msg "information" "  [Job $i] Warning: Could not verify remote rsync (SSH connection failed)."
                 fi
             fi
 
@@ -316,21 +370,18 @@ while true; do
                 dest="$local_path"
             fi
 
-            echo "  [Job $i] Syncing ($direction): $src -> $dest"
+            log_msg "information" "  [Job $i] Syncing ($direction): $src -> $dest"
             
             # Execute rsync
             if rsync "${rsync_args[@]}" "$src" "$dest"; then
                 : # Success
             else
                 log_error "rsync failed for $src -> $dest" "$host_filename"
-                echo "  [Job $i] Error: rsync failed. See logs/autosync.err for details."
+                log_msg "error" "  [Job $i] Error: rsync failed. See logs/autosync.log for details."
             fi
         done
     done
 
-    # If no host files but global IP exists, we could handle a global sync here if desired,
-    # but the current logic focuses on per-host files or explicitly defined global jobs.
-
-    echo "Waiting $check_interval seconds..."
+    log_msg "information" "Waiting $check_interval seconds..."
     sleep "$check_interval"
 done

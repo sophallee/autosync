@@ -7,6 +7,15 @@ check_interval=60
 max_folders=20
 
 # --- Logging & Notifications ---
+# Log level: information (default) or error
+log_level='information'
+
+# Max log file size in KB before rotation (default: 1024KB / 1MB)
+log_max_size_kb=1024
+
+# Number of rotated log backups to keep
+log_backups=5
+
 # Path to write rsync errors (leave empty for <script_dir>/logs/autosync.err)
 error_log=''
 
