@@ -287,7 +287,7 @@ while true; do
             value="${!synced_var}"
             [[ -z "$value" ]] && break
 
-            # Parse fields: direction,host_alias,local_path,remote_path,exclude_file
+            # Parse fields: direction,host_alias,local_path,remote_path,exclude_file,options
             IFS="," read -ra fields <<< "$value"
             
             if [[ ${#fields[@]} -ge 3 ]]; then
@@ -296,6 +296,7 @@ while true; do
                 local_path="${fields[2]}"
                 remote_subpath="${fields[3]:-$remote_path}"
                 exclude_file="${fields[4]}"
+                options="${fields[5]}"
             else
                 # Legacy/Simplified format: local_path,remote_path,exclude_file (assumes pull)
                 direction="pull"
@@ -303,6 +304,7 @@ while true; do
                 local_path="${fields[0]}"
                 remote_subpath="${fields[1]:-$remote_path}"
                 exclude_file="${fields[2]}"
+                options=""
             fi
 
             # Resolve connection parameters
@@ -336,7 +338,8 @@ while true; do
             fi
 
             # Construct rsync arguments
-            rsync_args=("-avz" "--delete")
+            rsync_args=("-avz")
+            [[ "$options" == *"delete"* ]] && rsync_args+=("--delete")
             
             # SSH configuration (cater for .ssh/config by omitting empty values)
             ssh_cmd="ssh"

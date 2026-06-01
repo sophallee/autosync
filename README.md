@@ -47,8 +47,8 @@ description="Production Web Server"
 remote_ip="web01"
 remote_user="deploy"
 
-# Sync jobs: "direction,host_alias,local_path,remote_path,exclude_file"
-synced_folder1="pull,,/var/www/html,/var/www/html,"
+# Sync jobs: "direction,host_alias,local_path,remote_path,exclude_file,options"
+synced_folder1="pull,,/var/www/html,/var/www/html,,delete"
 ```
 
 ### 2. Host-Specific Excludes
