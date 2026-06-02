@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
+Environment=HOME=%h
 WorkingDirectory=##WORKING_DIR##
 ExecStart=##WORKING_DIR##/autosync.sh
 Restart=always

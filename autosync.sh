@@ -159,6 +159,17 @@ fi
 
 # --- Initialization & Checks ---
 
+# Ensure HOME is set (critical for systemd services to find .ssh/config)
+if [[ -z "${HOME:-}" ]]; then
+    export HOME=$(getent passwd "$(id -un)" | cut -d: -f6)
+fi
+
+# Function to expand ~ to $HOME
+expand_path() {
+    local path="$1"
+    echo "${path/#\~/$HOME}"
+}
+
 missing_global=0
 
 check_config_exists() {
@@ -188,6 +199,14 @@ source "$global_properties"
 g_log_level="${log_level:-error}"
 g_log_max_size_kb="${log_max_size_kb:-1024}"
 g_log_backups="${log_backups:-5}"
+
+# Expand global paths
+g_ssh_key=$(expand_path "${ssh_key:-}")
+g_remote_ip="${remote_ip:-}"
+g_remote_port="${remote_port:-22}"
+g_remote_user="${remote_user:-}"
+g_remote_path=$(expand_path "${remote_path:-}")
+global_exclude_file=$(expand_path "${global_exclude_file:-}")
 
 # --- Connection Helper Functions ---
 
@@ -285,11 +304,11 @@ while true; do
     # Set global defaults if not defined
     check_interval="${check_interval:-60}"
     max_folders="${max_folders:-20}"
-    g_ssh_key="${ssh_key}"
-    g_remote_ip="${remote_ip}"
-    g_remote_port="${remote_port}"
-    g_remote_user="${remote_user}"
-    g_remote_path="${remote_path}"
+    g_ssh_key=$(expand_path "${ssh_key:-}")
+    g_remote_ip="${remote_ip:-}"
+    g_remote_port="${remote_port:-22}"
+    g_remote_user="${remote_user:-}"
+    g_remote_path=$(expand_path "${remote_path:-}")
 
     # Find all host property files in the configs directory
     shopt -s nullglob
@@ -317,6 +336,10 @@ while true; do
         # Load host config
         # shellcheck source=/dev/null
         source "$host_file"
+        
+        # Expand paths after loading host config
+        ssh_key=$(expand_path "$ssh_key")
+        remote_path=$(expand_path "$remote_path")
         
         host_filename=$(basename "$host_file" .properties)
         host_label="${description:-$host_filename}"
@@ -346,17 +369,17 @@ while true; do
             if [[ ${#fields[@]} -ge 3 ]]; then
                 direction="${fields[0]}"
                 host_alias="${fields[1]}"
-                local_path="${fields[2]}"
-                remote_subpath="${fields[3]:-$remote_path}"
-                exclude_file="${fields[4]}"
+                local_path=$(expand_path "${fields[2]}")
+                remote_subpath=$(expand_path "${fields[3]:-$remote_path}")
+                exclude_file=$(expand_path "${fields[4]}")
                 options="${fields[5]}"
             else
                 # Legacy/Simplified format: local_path,remote_path,exclude_file (assumes pull)
                 direction="pull"
                 host_alias=""
-                local_path="${fields[0]}"
-                remote_subpath="${fields[1]:-$remote_path}"
-                exclude_file="${fields[2]}"
+                local_path=$(expand_path "${fields[0]}")
+                remote_subpath=$(expand_path "${fields[1]:-$remote_path}")
+                exclude_file=$(expand_path "${fields[2]}")
                 options=""
             fi
 
