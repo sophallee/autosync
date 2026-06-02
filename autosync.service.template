@@ -1,0 +1,15 @@
+[Unit]
+Description=Autosync Daemon - Continuous rsync-based synchronization
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=##WORKING_DIR##
+ExecStart=##WORKING_DIR##/autosync.sh
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

@@ -22,16 +22,25 @@ A daemon script that continuously pulls or pushes files between a remote server 
    - Copy `autosync.excludes.template` to `autosync.excludes` for global rsync filters.
 3. **Add Hosts**: Place `.properties` files in the `configs/` directory.
 
-## Running as a Daemon (Crontab)
+## Running as a Systemd User Service (Recommended)
 
-The script handles its own logging and log rotation, so you don't need to redirect output in your crontab. To ensure the script starts automatically on reboot, add it to your crontab:
+You can run `autosync` as a background service managed by `systemd` for your specific user. This ensures it starts automatically on login and restarts if it fails.
 
-1. Open crontab: `crontab -e`
-2. Add the following line (replace with your actual path):
+1. **Install the service**:
    ```bash
-   @reboot /path/to/autosync/autosync.sh
+   ./autosync.sh --setup-service
    ```
+2. **Start the service**:
+   ```bash
+   systemctl --user start autosync.service
+   ```
+3. **Management Commands**:
+   - **View Status**: `systemctl --user status autosync.service`
+   - **View Logs**: `journalctl --user -u autosync.service -f`
+   - **Stop Service**: `systemctl --user stop autosync.service`
 
+## Running as a Daemon (Crontab)
+...
 ## Modular Config Structure
 
 ### 1. Global Properties (`global.properties`)

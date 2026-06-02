@@ -16,18 +16,71 @@ log_file="$logs_dir/autosync.log"
 mkdir -p "$logs_dir"
 mkdir -p "$configs_dir"
 
-# --- Prevent multiple instances ---
-if [[ -f "$pid_file" ]]; then
-    pid=$(cat "$pid_file")
-    if ps -p "$pid" > /dev/null 2>&1; then
-        echo "Error: autosync is already running (PID: $pid)."
+# --- Flags and Service Setup ---
+
+show_help() {
+    echo "Usage: $(basename "$0") [options]"
+    echo ""
+    echo "Options:"
+    echo "  --setup-service  Install this script as a systemd user service."
+    echo "  --help           Show this help message."
+    echo ""
+}
+
+setup_service() {
+    local service_file="$HOME/.config/systemd/user/autosync.service"
+    local template="$script_dir/autosync.service.template"
+    
+    if [[ ! -f "$template" ]]; then
+        echo "Error: Service template not found at $template"
         exit 1
     fi
-fi
-echo $$ > "$pid_file"
+    
+    mkdir -p "$HOME/.config/systemd/user"
+    
+    echo "Installing service to $service_file..."
+    sed "s|##WORKING_DIR##|$script_dir|g" "$template" > "$service_file"
+    
+    systemctl --user daemon-reload
+    systemctl --user enable autosync.service
+    
+    echo "Success! You can now start the service with:"
+    echo "  systemctl --user start autosync.service"
+    echo ""
+    echo "To view logs, use:"
+    echo "  journalctl --user -u autosync.service -f"
+    exit 0
+}
 
-# Clean up PID file on exit
-trap 'rm -f "$pid_file"; exit' INT TERM EXIT
+if [[ $# -gt 0 ]]; then
+    case "$1" in
+        --setup-service)
+            setup_service
+            ;;
+        --help)
+            show_help
+            exit 0
+            ;;
+        *)
+            # Continue to main logic if no known flags
+            ;;
+    esac
+fi
+
+# --- Prevent multiple instances ---
+# Skip PID check if running under systemd (systemd manages instances)
+if [[ -z "${INVOCATION_ID:-}" ]]; then
+    if [[ -f "$pid_file" ]]; then
+        pid=$(cat "$pid_file")
+        if ps -p "$pid" > /dev/null 2>&1; then
+            echo "Error: autosync is already running (PID: $pid)."
+            exit 1
+        fi
+    fi
+    echo $$ > "$pid_file"
+    # Clean up PID file on exit (only if not systemd)
+    trap 'rm -f "$pid_file"; exit' INT TERM EXIT
+fi
 
 # --- Helper Functions ---
 
